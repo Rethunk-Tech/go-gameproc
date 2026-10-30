@@ -11,8 +11,9 @@
 
 Find, stop and wait for a game's processes, natively or under Wine, Proton, dotnet or mono, on Linux and Windows. Package `gameproc`, module `github.com/Rethunk-Tech/go-gameproc`.
 
-<!-- scaffold: one short paragraph on what the package guarantees and why it exists, in plain
-words. -->
+A game can run natively, under Wine or Proton, or through dotnet or mono, and a launcher or mod manager must tell
+which install a process belongs to, never mistake a system program or Steam for the game, and stop it cleanly. This
+package does that from the process table alone: no game data, no options, names come from the caller.
 
 ## Quick start
 
@@ -24,7 +25,12 @@ A worked example and the contracts: [HUMANS.md](HUMANS.md).
 
 ## Features
 
-<!-- scaffold: 3 to 6 bullets, each a capability a caller can rely on. No roadmap. -->
+- List processes by program name in one pass, with executable, command line and start time, including from inside a Flatpak.
+- Tell which install a process runs from, by executable, argument, Wine `Z:` path or symlinked deploy.
+- Stop politely: a Wine process is asked to close first, so a launcher sees a clean exit.
+- Wait for any pid and read its exit code and signal.
+- Start a child so its whole tree ends together: a process group, or a job object on Windows.
+- Start a Windows console program in a console of its own.
 
 ## Documentation
 
