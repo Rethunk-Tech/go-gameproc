@@ -292,3 +292,15 @@ func TestHostTerminateReportsAProbeThatFailsAfterTERM(t *testing.T) {
 		t.Fatal("a game that may still run was reported stopped")
 	}
 }
+
+func TestParseHostProcessesSkipsMalformedRecords(t *testing.T) {
+	t.Parallel()
+	out := "7 100\nx\n8\n 9 y\n\x00" +
+		"7/cmdline:/g/Game\x00junk\x00x/cmdline:Game\x00-1/cmdline:Game\x008/stat:Game\x009/cmdline\x00" +
+		"10/cmdline:Game\x00"
+	got := parseHostProcesses(out, "Game")
+	if len(got) != 2 || got[0].PID != 7 || !got[0].Start.Equal(time.Unix(100, 0)) || got[1].PID != 10 ||
+		!got[1].Start.IsZero() {
+		t.Fatalf("%+v", got)
+	}
+}

@@ -3,7 +3,6 @@ package gameproc
 import (
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -135,9 +134,7 @@ func TestWaitPIDWaitsForAProcessThatIsNotAChild(t *testing.T) {
 }
 
 func TestStatusOfMapsAWaitError(t *testing.T) {
-	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^$") //nolint:gosec // G204: re-executes the test binary
-	cmd.Env = append(os.Environ(), helperEnv+"=exit=5")
-	if got := StatusOf(cmd.Run()); got != (Status{Code: 5}) {
+	if got := StatusOf(helperCmd(t, "exit=5").Run()); got != (Status{Code: 5}) {
 		t.Fatalf("StatusOf = %+v", got)
 	}
 	if got := StatusOf(nil); got != (Status{}) {
