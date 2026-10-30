@@ -54,7 +54,7 @@ func StartOwnConsole(env []string, dir, name string, args []string) (<-chan erro
 	var block *uint16
 	if len(env) > 0 {
 		flags |= windows.CREATE_UNICODE_ENVIRONMENT
-		block = envBlock(env)
+		block = &envBlock(env)[0]
 	}
 	si := windows.StartupInfo{}
 	si.Cb = uint32(unsafe.Sizeof(si))
@@ -96,12 +96,7 @@ func StartOwnConsole(env []string, dir, name string, args []string) (<-chan erro
 
 // envBlock is env as a sorted, NUL-separated, double-NUL-terminated UTF-16 block, as CreateProcess wants it; a
 // later duplicate of a variable wins, as with os/exec.
-func envBlock(env []string) *uint16 {
-	out := envUTF16(env)
-	return &out[0]
-}
-
-func envUTF16(env []string) []uint16 {
+func envBlock(env []string) []uint16 {
 	last := map[string]string{}
 	for _, kv := range env {
 		k, _, _ := strings.Cut(kv, "=")
