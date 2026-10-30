@@ -16,7 +16,8 @@ Notable changes to `go-gameproc`. The format follows
   argument, by a Wine `Z:` path, or through a symlinked deploy.
 - `Alive`, `Terminate`, `Stop` and `ImagePath` check, end and identify a process by pid. `Stop` asks a Wine process
   to close first, so a launcher that tracks it sees a clean exit.
-- `WaitPID` and `StatusOf` wait for any pid and report its exit code and signal.
+- `WaitPID` and `StatusOf` wait for any pid and report its exit code and signal; a Unix process that is not a child
+  gives `ErrNotChild` once it is gone.
 - `PrepareTree`, `TrackTree`, `KillTree` and `UntrackTree` start a child so that it and everything it starts can be
   ended together: a process group on Unix, a job object on Windows.
 - `StartOwnConsole` starts a Windows console program in a console that it reads and writes itself.

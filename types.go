@@ -13,5 +13,9 @@ type Status struct {
 // KillTree then ends only the process.
 var ErrNotTracked = errors.New("gameproc: the process runs outside a job")
 
+// ErrNotChild is WaitPID's error, joined with the wait error, for a Unix process that is not the caller's child: it
+// was waited out, but its exit status is unknown.
+var ErrNotChild = errors.New("gameproc: the process is not a child, so its exit status is unknown")
+
 // ErrNoConsole is StartOwnConsole's error off Windows.
 var ErrNoConsole = errors.New("gameproc: a program with its own console starts only on Windows")

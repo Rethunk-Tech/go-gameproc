@@ -1,6 +1,7 @@
 package gameproc
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -106,7 +107,7 @@ func TestWaitPIDWaitsForAProcessThatIsNotAChild(t *testing.T) {
 	done := make(chan Status, 1)
 	go func() {
 		s, err := WaitPID(grandchild)
-		if err != nil {
+		if runtime.GOOS != "windows" && !errors.Is(err, ErrNotChild) || runtime.GOOS == "windows" && err != nil {
 			t.Errorf("WaitPID: %v", err)
 		}
 		done <- s

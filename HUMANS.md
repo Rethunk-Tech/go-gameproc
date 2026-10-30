@@ -48,7 +48,7 @@ and `UntrackTree` follows `cmd.Wait()`.
 | `Alive`, `Terminate`, `Stop`, `WaitPID`, `ImagePath`, `TrackTree` | Refuse `pid <= 0`: `Alive` is false, the rest return an error. `KillTree` and `UntrackTree` do nothing for it, and `KillTree` also for pid 1 on Unix. |
 | `Terminate` | Unix: SIGTERM, then SIGKILL after `grace`; a process already gone is success. Windows: ends the tracked job or the process at once and waits up to `grace`. In a Flatpak a failure to ask the host is an error, never "gone". |
 | `Stop` | `Terminate`, after `wine taskkill` (no `/f`) in the process's own prefix environment for a Wine process (Linux, outside a Flatpak). |
-| `WaitPID` | The exit status is readable only for the caller's own child. For any other process it polls until the exit and returns an empty `Status` and no error. |
+| `WaitPID` | The exit status is readable only for the caller's own child. For any other process it polls until the exit and returns an empty `Status` and an error matching `ErrNotChild` (Flatpak: nil once the host says it is gone). |
 | `StatusOf` | Maps `exec.Cmd.Wait`'s error to `Status`; a signal gives `Code` 128 plus the signal number and `Signal` its name (Unix). |
 | `PrepareTree`, `TrackTree`, `KillTree`, `UntrackTree` | Unix: new process group, `KillTree` sends it SIGTERM. Windows: suspended start, a job per pid held in package state; call `UntrackTree` after `Wait`. `errors.Is(err, ErrNotTracked)` from `TrackTree` means resumed but outside a job. Never sets HideWindow; `noConsole` sets CREATE_NO_WINDOW. The module never touches `cmd.Env`. |
 | `StartOwnConsole` | Windows only (`ErrNoConsole` elsewhere). `env` is the complete environment, empty meaning the caller's own. Takes no context: the program outlives the caller's request. |
