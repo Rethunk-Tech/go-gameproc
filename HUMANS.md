@@ -40,7 +40,7 @@ and `UntrackTree` follows `cmd.Wait()`.
 
 ## Contracts
 
-| Call | Contract |
+| Behaviour | Contract |
 | --- | --- |
 | `Processes` | One pass over the table. Linux names match exactly (`.exe`/`.dll` fold case); only `argv[0]`, or `argv[1]` under dotnet/mono, names the program; system programs never match. `procDir` is a `/proc`-shaped tree; only the literal `/proc` inside a Flatpak lists the host (needs `--talk-name=org.freedesktop.Flatpak`). Windows ignores `procDir`, leaves `Args` nil and keeps a process whose image path is unreadable with `Exe == ""`. |
 | `Named`, `RunsFrom`, `LinkedFrom`, `ExeIs` | Pure judgements on a `Process`; `RunsFrom` reads a Wine `Z:\...` path as the Unix path it names. |
@@ -52,9 +52,6 @@ and `UntrackTree` follows `cmd.Wait()`.
 | `StatusOf` | Maps `exec.Cmd.Wait`'s error to `Status`; a signal gives `Code` 128 plus the signal number and `Signal` its name (Unix). |
 | `PrepareTree`, `TrackTree`, `KillTree`, `UntrackTree` | Unix: new process group, `KillTree` sends it SIGTERM. Windows: suspended start, a job per pid held in package state; call `UntrackTree` after `Wait`. `errors.Is(err, ErrNotTracked)` from `TrackTree` means resumed but outside a job. Never sets HideWindow; `noConsole` sets CREATE_NO_WINDOW. The module never touches `cmd.Env`. |
 | `StartOwnConsole` | Windows only (`ErrNoConsole` elsewhere). `env` is the complete environment, empty meaning the caller's own. Takes no context: the program outlives the caller's request. |
-
-Not testable without the real thing: Wine and Proton `taskkill` behaviour, a real Flatpak host, macOS `WaitPID` and
-`ImagePath` (they compile, nothing runs them), and `TrackTree`'s `ErrNotTracked` and resume-failure paths.
 
 ## Requirements
 

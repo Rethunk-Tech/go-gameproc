@@ -11,9 +11,9 @@
 
 Find, stop and wait for a game's processes, natively or under Wine, Proton, dotnet or mono, on Linux and Windows. Package `gameproc`, module `github.com/Rethunk-Tech/go-gameproc`.
 
-A game can run natively, under Wine or Proton, or through dotnet or mono, and a launcher or mod manager must tell
-which install a process belongs to, never mistake a system program or Steam for the game, and stop it cleanly. This
-package does that from the process table alone: no game data, no options, names come from the caller.
+A launcher or mod manager must tell which install a process belongs to, never mistake a system program or Steam for
+the game, and stop it cleanly. This package does that from the process table alone: no game data, no options, names
+come from the caller.
 
 ## Quick start
 

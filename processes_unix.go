@@ -131,7 +131,7 @@ func startTime(procDir, pid string) time.Time {
 }
 
 // hostScript lists every host process, since /proc inside the sandbox shows only the sandbox's own. It runs two programs
-// in all, not one per process: every profile change asks, and a desktop runs hundreds of processes. It prints
+// in all, not one per process, since a desktop runs hundreds of processes. It prints
 // "pid start-unix" lines (the proc entry's mtime is the start of a process that has not changed owner), a NUL, then
 // grep's "pid/cmdline:arg" record per argument, NUL-terminated so an argument may hold any other byte.
 const hostScript = `cd /proc && stat -c '%n %Y' [0-9]* 2>/dev/null; printf '\0'; grep -Hasz '' [0-9]*/cmdline 2>/dev/null; exit 0`

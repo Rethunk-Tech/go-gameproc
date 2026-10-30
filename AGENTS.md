@@ -7,17 +7,20 @@ package, names no game, and carries no game data: every program name comes from 
 ## Gate
 
 `gate` is the command. Each override in `.gate.toml` is there because a runner
-cannot resolve that check from PATH. The `windows-latest` test job is the only place
-Windows-only behaviour runs.
-Only that job runs `exe_windows_test.go`, `console_windows_test.go`, `stop_windows_test.go` and the Windows branch of
-`live_test.go` (Toolhelp listing, job objects, suspended start). `TestStopAsksAWineGameToCloseFirst` needs `/bin/sh`
+cannot resolve that check from PATH.
+
+Only the `windows-latest` test job runs `exe_windows_test.go`, `console_windows_test.go`, `stop_windows_test.go`
+and the Windows branch of `live_test.go` (Toolhelp listing, job objects, suspended start). `TestStopAsksAWineGameToCloseFirst` needs `/bin/sh`
 and the Flatpak tests need `FLATPAK_ID`, so both are Unix-only. Real processes come from the test binary itself:
 `TestMain` acts as a child when `GAMEPROC_HELPER` is set (`helper_test.go`).
+
+No test reaches Wine and Proton `taskkill` behaviour, a real Flatpak host, macOS `WaitPID` and `ImagePath` (they
+compile, nothing runs them), or `TrackTree`'s `ErrNotTracked` and resume-failure paths.
 
 ## Shape
 
 - Matching rules and their three lists (`dotnet`/`mono` hosts, Wine loader names, system folders) are unexported and
-  take no options. Every past change to them was a general rule, not game data; names come from the caller.
+  take no options: each entry is a general rule, not game data.
 - A Linux name matches exactly; only `.exe` and `.dll` fold case. Folding everything makes `/bin/sh` a game called
   "SH". Only `argv[0]`, or `argv[1]` under dotnet/mono, names the program, or a launcher that lists the game in its
   arguments would be taken for the game.
@@ -34,8 +37,6 @@ and the Flatpak tests need `FLATPAK_ID`, so both are Unix-only. Real processes c
   `UntrackTree` must follow `Wait`, or a reused pid finds a stale job.
 - `PrepareTree` never sets HideWindow, and keeps one the caller set: Windows applies it to the first window the
   process shows, which for a loader that starts the game in a second process is the game's.
-- The module never builds a child's environment. The caller sets `cmd.Env` before `PrepareTree`; `StartOwnConsole`
-  takes the complete environment.
 - `Status.Signal` strings come from `unix.SignalName` and callers may persist them, so they do not change.
 
 ## Files
