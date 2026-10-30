@@ -3,6 +3,7 @@
 package gameproc
 
 import (
+	"errors"
 	"os"
 	"syscall"
 	"time"
@@ -42,6 +43,10 @@ func WaitPID(pid int) (Status, error) {
 	}
 	for Alive(pid) {
 		time.Sleep(100 * time.Millisecond)
+	}
+	// ECHILD is the expected answer for a process that is not the caller's child.
+	if errors.Is(err, syscall.ECHILD) {
+		err = nil
 	}
 	return Status{}, err
 }

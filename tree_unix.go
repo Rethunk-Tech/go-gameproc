@@ -16,8 +16,14 @@ func PrepareTree(cmd *exec.Cmd, _ bool) {
 	cmd.SysProcAttr.Setpgid = true
 }
 
-// TrackTree is a no-op off Windows: the process group needs no registration after the start.
-func TrackTree(int) error { return nil }
+// TrackTree needs nothing off Windows: the process group is complete at the start. It still refuses a pid no process
+// has, so the same call is safe on every OS.
+func TrackTree(pid int) error {
+	if pid <= 0 {
+		return errPID(pid)
+	}
+	return nil
+}
 
 // KillTree sends SIGTERM to the process group PrepareTree made pid the leader of. It refuses pid 1 and below, since
 // kill(-1, ...) signals every process the user owns.

@@ -97,6 +97,11 @@ func StartOwnConsole(env []string, dir, name string, args []string) (<-chan erro
 // envBlock is env as a sorted, NUL-separated, double-NUL-terminated UTF-16 block, as CreateProcess wants it; a
 // later duplicate of a variable wins, as with os/exec.
 func envBlock(env []string) *uint16 {
+	out := envUTF16(env)
+	return &out[0]
+}
+
+func envUTF16(env []string) []uint16 {
 	last := map[string]string{}
 	for _, kv := range env {
 		k, _, _ := strings.Cut(kv, "=")
@@ -108,6 +113,5 @@ func envBlock(env []string) *uint16 {
 		out = append(out, utf16.Encode([]rune(last[k]))...)
 		out = append(out, 0)
 	}
-	out = append(out, 0)
-	return &out[0]
+	return append(out, 0)
 }

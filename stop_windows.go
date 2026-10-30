@@ -16,7 +16,10 @@ import (
 const stillActive = 259
 
 func pidUint32(pid int) (uint32, error) {
-	if pid <= 0 || uint64(pid) > math.MaxUint32 {
+	if pid <= 0 {
+		return 0, errPID(pid)
+	}
+	if uint64(pid) > math.MaxUint32 {
 		return 0, fmt.Errorf("pid %d out of range", pid)
 	}
 	return uint32(pid), nil
