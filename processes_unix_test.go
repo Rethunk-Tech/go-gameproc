@@ -304,3 +304,66 @@ func TestParseHostProcessesSkipsMalformedRecords(t *testing.T) {
 		t.Fatalf("%+v", got)
 	}
 }
+
+func TestProcessesListsTheHostInsideAFlatpak(t *testing.T) {
+	t.Setenv("FLATPAK_ID", "x")
+	old := hostOutput
+	t.Cleanup(func() { hostOutput = old })
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		if name != "sh" || len(args) != 2 || args[1] != hostScript {
+			t.Errorf("asked the host for %s %q", name, args)
+		}
+		return []byte("7 100\n\x007/cmdline:/g/Game\x00"), nil
+	}
+	got, err := Processes("/proc", "Game")
+	if err != nil || len(got) != 1 || got[0].PID != 7 {
+		t.Fatalf("%+v, %v", got, err)
+	}
+	hostOutput = func(string, ...string) ([]byte, error) { return nil, errors.New("no flatpak-spawn") }
+	if _, err := Processes("/proc", "Game"); err == nil {
+		t.Fatal("a failed host listing was reported as no processes")
+	}
+}
+
+func TestEarlyReturnsOnNothingToAskAbout(t *testing.T) {
+	if Alive(0) || Terminate(-1, time.Second) == nil {
+		t.Error("pid 0 and below name no process")
+	}
+	t.Setenv("FLATPAK_ID", "x")
+	old := hostOutput
+	t.Cleanup(func() { hostOutput = old })
+	hostOutput = func(string, ...string) ([]byte, error) { return []byte("alive\n"), nil }
+	if !Alive(42) {
+		t.Error("the host says 42 is alive")
+	}
+	hostOutput = func(string, ...string) ([]byte, error) { return nil, errors.New("no host") }
+	if Alive(42) {
+		t.Error("an unreachable host reads as not alive")
+	}
+
+	if (Process{}).LinkedFrom("/d") || (Process{Exe: "/x/g"}).LinkedFrom("") || (Process{Exe: "/x/g"}).LinkedFrom(t.TempDir()) {
+		t.Error("LinkedFrom without an exe, a folder or a link")
+	}
+	if (Process{}).ExeIs("g") || !(Process{Exe: "/x/G.exe (deleted)"}).ExeIs("g") || (Process{Exe: "/x/wine"}).ExeIs("g") {
+		t.Error("ExeIs")
+	}
+	if within("", "/d") || within("/d/x", "") || !within("/d/x", "/d") {
+		t.Error("within")
+	}
+}
+
+func TestStatusOfNamesTheSignal(t *testing.T) {
+	if got := StatusOf(nil); got != (Status{}) {
+		t.Errorf("nil: %+v", got)
+	}
+	if got := StatusOf(errors.New("not an exit")); got.Code != 1 {
+		t.Errorf("non-exit error: %+v", got)
+	}
+	err := exec.CommandContext(t.Context(), "/bin/sh", "-c", "kill -KILL $$").Run()
+	if got := StatusOf(err); got.Code != 137 || got.Signal != "SIGKILL" {
+		t.Errorf("killed: %+v", got)
+	}
+	if got := StatusOf(exec.CommandContext(t.Context(), "/bin/sh", "-c", "exit 3").Run()); got.Code != 3 || got.Signal != "" {
+		t.Errorf("exit 3: %+v", got)
+	}
+}

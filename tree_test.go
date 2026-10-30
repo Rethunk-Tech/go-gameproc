@@ -36,3 +36,11 @@ func TestEndingATrackedTreeEndsWhatTheProgramStarted(t *testing.T) {
 		})
 	}
 }
+
+func TestTrackTreeRefusesNoPID(t *testing.T) {
+	for _, pid := range []int{0, -3} {
+		if TrackTree(pid) == nil {
+			t.Errorf("pid %d was tracked", pid)
+		}
+	}
+}
