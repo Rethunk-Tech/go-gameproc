@@ -6,6 +6,8 @@ Notable changes to `go-gameproc`. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-29
+
 ### Added
 
 - `Processes` lists the running processes whose program is one of the given names in one pass: executable, command
@@ -22,4 +24,5 @@ Notable changes to `go-gameproc`. The format follows
   ended together: a process group on Unix, a job object on Windows.
 - `StartOwnConsole` starts a Windows console program in a console that it reads and writes itself.
 
-[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/commits/main
+[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Rethunk-Tech/go-gameproc/releases/tag/v0.1.0
