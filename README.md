@@ -28,7 +28,7 @@ A worked example and the contracts: [HUMANS.md](HUMANS.md).
 - List processes by program name in one pass, with executable, command line and start time, including from inside a Flatpak.
 - Tell which install a process runs from, by executable, argument, Wine `Z:` path or symlinked deploy.
 - Stop politely: a Wine process is asked to close first, so a launcher sees a clean exit.
-- Wait for any pid and read its exit code and signal.
+- Wait for any pid, and read the exit code and signal of a child.
 - Start a child so its whole tree ends together: a process group, or a job object on Windows.
 - Start a Windows console program in a console of its own.
 

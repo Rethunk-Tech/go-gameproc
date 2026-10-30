@@ -101,8 +101,8 @@ func Terminate(pid int, grace time.Duration) error {
 	return nil
 }
 
-// Alive reports whether a process with this pid exists; a pid of 0 or less never does. In a Flatpak a failure to ask the host reads as false; callers
-// that must tell the two apart (Stop, WaitPID) use hostProbe.
+// Alive reports whether a process with this pid exists; a pid of 0 or less never does. In a Flatpak a failure to ask
+// the host reads as false; callers that must tell the two apart (Stop, WaitPID) use hostProbe.
 func Alive(pid int) bool {
 	if pid <= 0 {
 		return false

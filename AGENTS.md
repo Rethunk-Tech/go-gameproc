@@ -43,7 +43,7 @@ and the Flatpak tests need `FLATPAK_ID`, so both are Unix-only. Real processes c
 | File | Holds |
 | --- | --- |
 | `doc.go` | Package doc |
-| `types.go` | `Status`, `ErrNotTracked`, `ErrNoConsole` |
+| `types.go` | `Status`, `ErrNotTracked`, `ErrNotChild`, `ErrNoConsole` |
 | `process.go` | `Process`, `RunsFrom`, `LinkedFrom`, `ExeIs`, path containment, `exitedWithin` |
 | `system.go` | System-folder test that keeps system programs from matching |
 | `processes_unix.go` | `Processes` and `Named` from `/proc` or the Flatpak host, start time |
