@@ -60,8 +60,11 @@ func TestImagePathOfARunningProgram(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want, _ := safefs.EvalSymlinks(os.Args[0]); !safefs.SamePath(got, want) {
-		t.Fatalf("ImagePath = %q, want %q", got, want)
+	// Windows can hand back the 8.3 short name for one of the two paths, so compare the files, not the strings.
+	gi, gerr := os.Stat(got)
+	wi, werr := os.Stat(os.Args[0])
+	if gerr != nil || werr != nil || !os.SameFile(gi, wi) {
+		t.Fatalf("ImagePath = %q (%v), want the file at %q (%v)", got, gerr, os.Args[0], werr)
 	}
 }
 
