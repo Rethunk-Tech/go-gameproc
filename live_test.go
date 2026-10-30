@@ -62,9 +62,13 @@ func TestImagePathOfARunningProgram(t *testing.T) {
 	}
 	// Windows can hand back the 8.3 short name for one of the two paths, so compare the files, not the strings.
 	gi, gerr := os.Stat(got)
-	wi, werr := os.Stat(os.Args[0])
+	exe, werr := os.Executable()
+	var wi os.FileInfo
+	if werr == nil {
+		wi, werr = os.Stat(exe)
+	}
 	if gerr != nil || werr != nil || !os.SameFile(gi, wi) {
-		t.Fatalf("ImagePath = %q (%v), want the file at %q (%v)", got, gerr, os.Args[0], werr)
+		t.Fatalf("ImagePath = %q (%v), want the file at %q (%v)", got, gerr, exe, werr)
 	}
 }
 
