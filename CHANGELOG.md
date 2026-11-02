@@ -6,6 +6,12 @@ Notable changes to `go-gameproc`. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-02
+
+### Fixed
+
+- A process's start time is unknown, rather than misread, when its `/proc` stat line has no closing parenthesis.
+
 ## [0.1.0] - 2026-10-29
 
 ### Added
@@ -24,5 +30,6 @@ Notable changes to `go-gameproc`. The format follows
   ended together: a process group on Unix, a job object on Windows.
 - `StartOwnConsole` starts a Windows console program in a console that it reads and writes itself.
 
-[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Rethunk-Tech/go-gameproc/releases/tag/v0.1.0
