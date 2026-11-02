@@ -106,7 +106,11 @@ func startTime(procDir, pid string) time.Time {
 		return time.Time{}
 	}
 	// The command name may hold spaces and parentheses, so fields count from the last ')'.
-	fields := strings.Fields(string(stat)[strings.LastIndex(string(stat), ")")+1:])
+	_, afterName, found := strings.CutLast(string(stat), ")")
+	if !found {
+		return time.Time{}
+	}
+	fields := strings.Fields(afterName)
 	if len(fields) < 20 {
 		return time.Time{}
 	}
