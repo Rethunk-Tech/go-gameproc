@@ -12,9 +12,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// stillActive is GetExitCodeProcess's code for a process that has not exited.
-const stillActive = 259
-
 func pidUint32(pid int) (uint32, error) {
 	if pid <= 0 {
 		return 0, errPID(pid)
@@ -85,11 +82,13 @@ func Alive(pid int) bool {
 	if err != nil {
 		return false
 	}
-	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, id)
+	h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, id)
 	if err != nil {
 		return false
 	}
 	defer func() { _ = windows.CloseHandle(h) }()
-	var code uint32
-	return windows.GetExitCodeProcess(h, &code) == nil && code == stillActive
+	// The handle is signalled once the process ends; a program may itself exit with code 259, which
+	// GetExitCodeProcess reports the same as "still active".
+	ev, err := windows.WaitForSingleObject(h, 0)
+	return err == nil && ev == uint32(windows.WAIT_TIMEOUT)
 }

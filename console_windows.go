@@ -1,6 +1,7 @@
 package gameproc
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -54,7 +55,11 @@ func StartOwnConsole(env []string, dir, name string, args []string) (<-chan erro
 	var block *uint16
 	if len(env) > 0 {
 		flags |= windows.CREATE_UNICODE_ENVIRONMENT
-		block = &envBlock(env)[0]
+		b, err := envBlock(env)
+		if err != nil {
+			return nil, err
+		}
+		block = &b[0]
 	}
 	si := windows.StartupInfo{}
 	si.Cb = uint32(unsafe.Sizeof(si))
@@ -95,10 +100,14 @@ func StartOwnConsole(env []string, dir, name string, args []string) (<-chan erro
 }
 
 // envBlock is env as a sorted, NUL-separated, double-NUL-terminated UTF-16 block, as CreateProcess wants it; a
-// later duplicate of a variable wins, as with os/exec.
-func envBlock(env []string) []uint16 {
+// later duplicate of a variable wins, as with os/exec. An entry holding a NUL is refused: it would end the entry and
+// start another variable.
+func envBlock(env []string) ([]uint16, error) {
 	last := map[string]string{}
 	for _, kv := range env {
+		if strings.ContainsRune(kv, 0) {
+			return nil, errors.New("gameproc: an environment entry holds a NUL")
+		}
 		k, _, _ := strings.Cut(kv, "=")
 		last[strings.ToUpper(k)] = kv
 	}
@@ -108,5 +117,5 @@ func envBlock(env []string) []uint16 {
 		out = append(out, utf16.Encode([]rune(last[k]))...)
 		out = append(out, 0)
 	}
-	return append(out, 0)
+	return append(out, 0), nil
 }
