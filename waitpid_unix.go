@@ -5,6 +5,7 @@ package gameproc
 import (
 	"errors"
 	"os"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -43,8 +44,13 @@ func WaitPID(pid int) (Status, error) {
 		}
 		err = werr
 	}
-	for Alive(pid) {
-		time.Sleep(100 * time.Millisecond)
+	// The pid may be recycled while we wait; the start time (or a pidfd) tells the process we were asked about from
+	// whatever takes its number.
+	start := startTime("/proc", strconv.Itoa(pid))
+	if !pidfdWait(pid, start) {
+		for Alive(pid) && sameProcess(Process{PID: pid, Start: start}) {
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 	if errors.Is(err, syscall.ECHILD) {
 		err = errors.Join(ErrNotChild, err)

@@ -23,14 +23,21 @@ import (
 // its Wine pid, which the launcher then waits on for good. Whatever is still running after grace is terminated. The
 // polite close is skipped inside a Flatpak, where the process's environment is not readable.
 func Stop(ctx context.Context, p Process, grace time.Duration) error {
-	if p.PID > 0 && closeWine(ctx, p, grace) && exitedWithin(func() bool { return !Alive(p.PID) }, grace) {
+	if p.PID <= 0 {
+		return errPID(p.PID)
+	}
+	if !flatpak.Inside() && !sameProcess(p) {
+		return nil // The listed process is gone and its pid belongs to another.
+	}
+	if closeWine(ctx, p, grace) && exitedWithin(func() bool { return !Alive(p.PID) || !sameProcess(p) }, grace) {
 		return nil
 	}
-	return Terminate(p.PID, grace)
+	return terminate(p, grace)
 }
 
 // closeWine runs taskkill without /f in the process's own Wine environment, which posts WM_CLOSE to the windows of
-// every process with that image name in its prefix. It reports whether taskkill ran.
+// every process with that image name in its prefix; Stop therefore skips it when another process of the prefix runs
+// the same image, and ends p by pid instead. It reports whether taskkill ran.
 func closeWine(ctx context.Context, p Process, timeout time.Duration) bool {
 	wine := wineLoader(p.Exe)
 	if wine == "" || len(p.Args) == 0 || flatpak.Inside() {
@@ -44,6 +51,9 @@ func closeWine(ctx context.Context, p Process, timeout time.Duration) bool {
 	if err != nil {
 		return false
 	}
+	if sharesImage(p, image, raw) {
+		return false
+	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, wine, "taskkill", "/im", image) //nolint:gosec // G204: wine is the prefix's wine; image is the game exe name
@@ -54,6 +64,36 @@ func closeWine(ctx context.Context, p Process, timeout time.Duration) bool {
 		}
 	}
 	return cmd.Run() == nil
+}
+
+// sharesImage reports whether a process other than p runs image in p's Wine prefix, which taskkill /im would close
+// along with p.
+func sharesImage(p Process, image string, environ []byte) bool {
+	prefix := envValue(environ, "WINEPREFIX")
+	others, err := Processes("/proc", trimExe(image))
+	if err != nil {
+		return true
+	}
+	for _, o := range others {
+		if o.PID == p.PID {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join("/proc", strconv.Itoa(o.PID), "environ"))
+		if err != nil || envValue(raw, "WINEPREFIX") == prefix {
+			return true
+		}
+	}
+	return false
+}
+
+// envValue is the value of name in a /proc/<pid>/environ block.
+func envValue(environ []byte, name string) string {
+	for kv := range strings.SplitSeq(string(environ), "\x00") {
+		if v, ok := strings.CutPrefix(kv, name+"="); ok {
+			return v
+		}
+	}
+	return ""
 }
 
 // wineLoader is the wine launcher beside exe when exe is a Wine loader (Proton keeps both in one folder), or "".
@@ -75,12 +115,28 @@ func wineLoader(exe string) string {
 
 // Terminate asks the process to exit (SIGTERM) and kills it if it is still there after grace. A process that is
 // already gone is success; one the caller may not signal is an error.
+//
+// The pid alone cannot say which process it was, so Terminate signals through a pidfd where the kernel has one (the
+// SIGKILL after grace then reaches the process SIGTERM did, never a later holder of the number). A caller holding a
+// listed Process uses Stop, which also refuses a pid that has been recycled since the listing.
 func Terminate(pid int, grace time.Duration) error {
 	if pid <= 0 {
 		return errPID(pid)
 	}
+	return terminate(Process{PID: pid}, grace)
+}
+
+// terminate signals p through a pidfd, or by bare pid on a kernel without one, checking p.Start before each signal.
+func terminate(p Process, grace time.Duration) error {
+	pid := p.PID
 	if flatpak.Inside() {
 		return hostTerminate(pid, grace)
+	}
+	if handled, err := pidfdTerminate(p, grace); handled {
+		return err
+	}
+	if !sameProcess(p) {
+		return nil
 	}
 	if err := syscall.Kill(pid, syscall.SIGTERM); err != nil {
 		if errors.Is(err, syscall.ESRCH) {
@@ -94,6 +150,9 @@ func Terminate(pid int, grace time.Duration) error {
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
+	}
+	if !sameProcess(p) {
+		return nil
 	}
 	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
 		return err

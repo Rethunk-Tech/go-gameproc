@@ -16,19 +16,22 @@ func PrepareTree(cmd *exec.Cmd, _ bool) {
 	cmd.SysProcAttr.Setpgid = true
 }
 
-// TrackTree needs nothing off Windows: the process group is complete at the start. It still refuses a pid no process
-// has, so the same call is safe on every OS.
+// TrackTree needs nothing off Windows: the process group is complete at the start. It records when the leader
+// started, so KillTree can refuse a pid that was recycled, and refuses a pid no process has, so the same call is
+// safe on every OS.
 func TrackTree(pid int) error {
 	if pid <= 0 {
 		return errPID(pid)
 	}
+	rememberLeader(pid)
 	return nil
 }
 
 // KillTree sends SIGTERM to the process group PrepareTree made pid the leader of. It refuses pid 1 and below, since
-// kill(-1, ...) signals every process the user owns.
+// kill(-1, ...) signals every process the user owns. For a pid TrackTree saw, it also refuses when a different
+// process now holds that pid, which is what a reaped leader's number becomes.
 func KillTree(pid int) {
-	if pid <= 1 {
+	if pid <= 1 || leaderReplaced(pid) {
 		return
 	}
 	_ = syscall.Kill(-pid, syscall.SIGTERM)
