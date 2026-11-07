@@ -35,7 +35,7 @@ compile, nothing runs them), or `TrackTree`'s `ErrNotTracked` and resume-failure
   group and `kill(-1, ...)` every process the user owns.
 - Unix signals go through a pidfd where the kernel has one, and `Stop` first checks the listed `Process.Start` against
   the pid's start time, so a recycled pid is left alone. `TrackTree` records the leader's start time for `KillTree`;
-  the record outlives `UntrackTree` because the kill usually follows the reap. A Flatpak host signal is still by bare pid.
+  the record outlives `UntrackTree` because the kill usually follows the reap. A Flatpak host signal runs one host command that compares /proc/<pid>'s mtime with `Process.Start` and then kills.
 - The job registry is package state keyed by pid: `Terminate` has only a pid and must find the job. The price is that
   `UntrackTree` must follow `Wait`, or a reused pid finds a stale job.
 - `PrepareTree` never sets HideWindow, and keeps one the caller set: Windows applies it to the first window the

@@ -130,7 +130,7 @@ func Terminate(pid int, grace time.Duration) error {
 func terminate(p Process, grace time.Duration) error {
 	pid := p.PID
 	if flatpak.Inside() {
-		return hostTerminate(pid, grace)
+		return hostTerminate(p, grace)
 	}
 	if handled, err := pidfdTerminate(p, grace); handled {
 		return err
@@ -167,7 +167,7 @@ func Alive(pid int) bool {
 		return false
 	}
 	if flatpak.Inside() {
-		alive, err := hostProbe(pid)
+		alive, err := hostProbe(pid, time.Time{})
 		return err == nil && alive
 	}
 	err := syscall.Kill(pid, 0)
@@ -180,41 +180,57 @@ var hostOutput = func(name string, args ...string) ([]byte, error) {
 	return flatpak.Command(context.Background(), name, args...).Output()
 }
 
-// Host PIDs mean nothing in the sandbox's PID namespace, so a Flatpak signals through the host's kill.
-func hostKill(sig string, pid int) error {
-	_, err := hostOutput("kill", "-"+sig, strconv.Itoa(pid))
+// hostIdentity is the host shell's test that /proc/<pid> was created at the second in "$2" (the entry's mtime, which is
+// what the host listing reports as Start); an empty "$2" accepts any process. Check and signal share one host command,
+// so a pid cannot be recycled between them.
+const hostIdentity = `[ -z "$2" ] || [ "$(stat -c %Y "/proc/$1" 2>/dev/null)" = "$2" ]`
+
+// startArg is p.Start as the host's seconds, or "" when unknown.
+func startArg(start time.Time) string {
+	if start.IsZero() {
+		return ""
+	}
+	return strconv.FormatInt(start.Unix(), 10)
+}
+
+// Host PIDs mean nothing in the sandbox's PID namespace, so a Flatpak signals through the host's kill. The signal is
+// sent only to the process created at start; a recycled pid is left alone and reads as an error here.
+func hostKill(sig string, pid int, start time.Time) error {
+	_, err := hostOutput("sh", "-c", hostIdentity+` && kill -"$3" "$1"`, "sh", strconv.Itoa(pid), startArg(start), sig)
 	return err
 }
 
-// hostProbe reports whether the host process pid exists. kill's "no such process" is told from a failure to run
-// flatpak-spawn at all by asking the host's sh to answer in its own stdout: any error here is the latter.
-func hostProbe(pid int) (bool, error) {
-	out, err := hostOutput("sh", "-c", `if kill -0 "$1" 2>/dev/null; then echo alive; else echo gone; fi`, "sh", strconv.Itoa(pid))
+// hostProbe reports whether the host process pid exists (and, when start is known, was created at start). kill's
+// "no such process" is told from a failure to run flatpak-spawn at all by asking the host's sh to answer in its own
+// stdout: any error here is the latter.
+func hostProbe(pid int, start time.Time) (bool, error) {
+	out, err := hostOutput("sh", "-c", hostIdentity+` && kill -0 "$1" 2>/dev/null && echo alive || echo gone`, "sh", strconv.Itoa(pid), startArg(start))
 	if err != nil {
 		return false, err
 	}
 	return strings.TrimSpace(string(out)) == "alive", nil
 }
 
-func hostTerminate(pid int, grace time.Duration) error {
-	alive, err := hostProbe(pid)
+func hostTerminate(p Process, grace time.Duration) error {
+	pid, start := p.PID, p.Start
+	alive, err := hostProbe(pid, start)
 	if err != nil || !alive {
 		return err
 	}
-	if killErr := hostKill("TERM", pid); killErr != nil {
-		if alive, err := hostProbe(pid); err != nil || !alive {
+	if killErr := hostKill("TERM", pid, start); killErr != nil {
+		if alive, err := hostProbe(pid, start); err != nil || !alive {
 			return err
 		}
 	}
 	deadline := time.Now().Add(grace)
 	for time.Now().Before(deadline) {
-		if alive, err := hostProbe(pid); err != nil || !alive {
+		if alive, err := hostProbe(pid, start); err != nil || !alive {
 			return err
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	killErr := hostKill("KILL", pid)
-	if alive, err := hostProbe(pid); err != nil {
+	killErr := hostKill("KILL", pid, start)
+	if alive, err := hostProbe(pid, start); err != nil {
 		return err
 	} else if alive {
 		return fmt.Errorf("process %d is still running after KILL: %w", pid, killErr)

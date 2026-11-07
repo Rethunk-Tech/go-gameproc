@@ -107,12 +107,12 @@ func TestHostTerminateSignalsThroughHostKill(t *testing.T) {
 	t.Cleanup(func() { hostOutput = old })
 	alive := true
 	hostOutput = func(name string, args ...string) ([]byte, error) {
-		call := name
-		if name != "sh" {
-			call = args[0]
+		call := "sh"
+		if strings.Contains(args[1], `kill -"$3"`) {
+			call = "-" + args[len(args)-1]
 		}
 		calls = append(calls, call)
-		if name == "sh" {
+		if call == "sh" {
 			if alive {
 				return []byte("alive\n"), nil
 			}

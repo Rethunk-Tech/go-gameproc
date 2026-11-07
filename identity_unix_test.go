@@ -3,6 +3,8 @@
 package gameproc
 
 import (
+	"os"
+	"os/exec"
 	"strconv"
 	"testing"
 	"time"
@@ -76,5 +78,39 @@ func TestKillTreeSparesARecycledLeader(t *testing.T) {
 	treeLeaders.start[pid] = truth
 	treeLeaders.Unlock()
 	KillTree(pid)
+	await(t, done)
+}
+
+// localHost stands in for flatpak-spawn by running the host command on this machine, so the real identity script runs.
+func localHost(t *testing.T) {
+	t.Helper()
+	t.Setenv("FLATPAK_ID", "x")
+	old := hostOutput
+	t.Cleanup(func() { hostOutput = old })
+	hostOutput = func(name string, args ...string) ([]byte, error) {
+		return exec.CommandContext(t.Context(), name, args...).Output() //nolint:gosec // G204: the test runs the host script on this machine
+	}
+}
+
+func TestFlatpakStopChecksTheHostStartTimeInTheSameCommand(t *testing.T) {
+	cmd := helperCmd(t, "sleep")
+	startHelper(t, cmd)
+	done := reap(cmd)
+	pid := cmd.Process.Pid
+	info, err := os.Stat("/proc/" + strconv.Itoa(pid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	localHost(t)
+	other := Process{PID: pid, Start: info.ModTime().Add(-time.Hour)}
+	if err := Stop(t.Context(), other, 500*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	if !Alive(pid) {
+		t.Fatal("a process created at another time was signalled")
+	}
+	if err := Stop(t.Context(), Process{PID: pid, Start: info.ModTime()}, 10*time.Second); err != nil {
+		t.Fatal(err)
+	}
 	await(t, done)
 }

@@ -23,7 +23,7 @@ func WaitPID(pid int) (Status, error) {
 	if flatpak.Inside() {
 		// Host PIDs mean nothing in the sandbox's PID namespace.
 		for {
-			alive, err := hostProbe(pid)
+			alive, err := hostProbe(pid, time.Time{})
 			if err != nil {
 				return Status{}, err
 			}
