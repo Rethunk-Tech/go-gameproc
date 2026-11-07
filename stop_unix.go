@@ -180,10 +180,16 @@ var hostOutput = func(name string, args ...string) ([]byte, error) {
 	return flatpak.Command(context.Background(), name, args...).Output()
 }
 
-// hostIdentity is the host shell's test that /proc/<pid> was created at the second in "$2" (the entry's mtime, which is
-// what the host listing reports as Start); an empty "$2" accepts any process. Check and signal share one host command,
-// so a pid cannot be recycled between them.
-const hostIdentity = `[ -z "$2" ] || [ "$(stat -c %Y "/proc/$1" 2>/dev/null)" = "$2" ]`
+// hostStartOf defines startof for the host's POSIX sh: it sets S to the process's start in Unix seconds, from field 22
+// of /proc/<pid>/stat (clock ticks since boot, counted after the last ") " so a command name holding spaces or
+// parentheses cannot shift the fields) plus the boot time, the same sum startTime makes. It fails for a missing process.
+const hostStartOf = `b=0; while read -r k v; do [ "$k" = btime ] && b=$v; done </proc/stat
+startof() { read -r l <"/proc/$1/stat" 2>/dev/null || return 1; l=${l##*) }; set -- $l; S=$((b + ${20} / 100)); }
+`
+
+// hostIdentity tests that process "$1" started at the second in "$2"; an empty "$2" accepts any process. The check and
+// the signal share one host command, so a pid cannot be recycled between them.
+const hostIdentity = hostStartOf + `{ [ -z "$2" ] || { startof "$1" && [ "$S" = "$2" ]; }; }`
 
 // startArg is p.Start as the host's seconds, or "" when unknown.
 func startArg(start time.Time) string {

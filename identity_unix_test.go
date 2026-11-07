@@ -5,7 +5,9 @@ package gameproc
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -92,24 +94,54 @@ func localHost(t *testing.T) {
 	}
 }
 
-func TestFlatpakStopChecksTheHostStartTimeInTheSameCommand(t *testing.T) {
-	cmd := helperCmd(t, "sleep")
-	startHelper(t, cmd)
-	done := reap(cmd)
-	pid := cmd.Process.Pid
-	info, err := os.Stat("/proc/" + strconv.Itoa(pid))
+// startedAs runs a sleeping process whose command name holds ") " and a "(", the bytes that shift naive stat parsing.
+func startedAs(t *testing.T) (pid int, done <-chan error) {
+	t.Helper()
+	exe := filepath.Join(t.TempDir(), "x) y (z")
+	b, err := os.ReadFile("/bin/sleep")
+	if err != nil {
+		t.Skip("no /bin/sleep")
+	}
+	if err := os.WriteFile(exe, b, 0o700); err != nil { //nolint:gosec // G306: an executable copy in the test's own folder
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), exe, "300") //nolint:gosec // G204: a copy of sleep made by the test
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill() })
+	return cmd.Process.Pid, reap(cmd)
+}
+
+// The host listing and the host identity check read the same start as startTime does, comm with ") " included.
+func TestHostStartMatchesStartTimeForAnAwkwardCommandName(t *testing.T) {
+	pid, _ := startedAs(t)
+	want := startTime("/proc", strconv.Itoa(pid))
+	if want.IsZero() {
+		t.Fatal("no start time")
+	}
+	out, err := exec.CommandContext(t.Context(), "sh", "-c", hostScript).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
+	listing, _, _ := strings.Cut(string(out), "\x00")
+	if !strings.Contains("\n"+listing, "\n"+strconv.Itoa(pid)+" "+strconv.FormatInt(want.Unix(), 10)+"\n") {
+		t.Fatalf("host listing has no %d %d line", pid, want.Unix())
+	}
+}
+
+func TestFlatpakStopChecksTheHostStartTimeInTheSameCommand(t *testing.T) {
+	pid, done := startedAs(t)
+	start := startTime("/proc", strconv.Itoa(pid))
 	localHost(t)
-	other := Process{PID: pid, Start: info.ModTime().Add(-time.Hour)}
-	if err := Stop(t.Context(), other, 500*time.Millisecond); err != nil {
+	recycled := Process{PID: pid, Start: start.Add(-time.Hour)}
+	if err := Stop(t.Context(), recycled, 500*time.Millisecond); err != nil {
 		t.Fatal(err)
 	}
 	if !Alive(pid) {
-		t.Fatal("a process created at another time was signalled")
+		t.Fatal("a process started at another time was signalled")
 	}
-	if err := Stop(t.Context(), Process{PID: pid, Start: info.ModTime()}, 10*time.Second); err != nil {
+	if err := Stop(t.Context(), Process{PID: pid, Start: start}, 10*time.Second); err != nil {
 		t.Fatal(err)
 	}
 	await(t, done)
