@@ -6,6 +6,14 @@ Notable changes to `go-gameproc`. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-07
+
+### Fixed
+
+- On Flatpak, a host process is identified by its start tick, and its start time is checked and the signal sent in one host command.
+- On Windows, a NUL in the environment is refused and liveness is read from the process handle.
+- On Unix, signals go through a pidfd and a recycled pid is refused.
+
 ## [0.1.1] - 2026-11-02
 
 ### Fixed
@@ -30,6 +38,7 @@ Notable changes to `go-gameproc`. The format follows
   ended together: a process group on Unix, a job object on Windows.
 - `StartOwnConsole` starts a Windows console program in a console that it reads and writes itself.
 
-[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Rethunk-Tech/go-gameproc/releases/tag/v0.1.0
