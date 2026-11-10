@@ -183,8 +183,11 @@ var hostOutput = func(name string, args ...string) ([]byte, error) {
 // hostStartOf defines startof for the host's POSIX sh: it sets S to the process's start in Unix seconds, from field 22
 // of /proc/<pid>/stat (clock ticks since boot, counted after the last ") " so a command name holding spaces or
 // parentheses cannot shift the fields) plus the boot time, the same sum startTime makes. It fails for a missing process.
+// The whole file is read, not its first line: a command name may hold a newline, and stat then spans lines, so a first
+// line would end inside the name. startof tests field 22 before the shell adds it, because dash ends the shell outright
+// on an empty one: that would cut the listing short and leave every later pid out of it.
 const hostStartOf = `b=0; while read -r k v; do [ "$k" = btime ] && b=$v; done </proc/stat
-startof() { read -r l <"/proc/$1/stat" 2>/dev/null || return 1; l=${l##*) }; set -- $l; S=$((b + ${20} / 100)); }
+startof() { l=; { while IFS= read -r x; do l=$l$x; done; } 2>/dev/null <"/proc/$1/stat" || return 1; l=${l##*) }; set -- $l; case ${20-} in ''|*[!0-9]*) return 1;; esac; S=$((b + ${20} / 100)); }
 `
 
 // hostIdentity tests that process "$1" started at the second in "$2"; an empty "$2" accepts any process. The check and

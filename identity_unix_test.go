@@ -94,18 +94,26 @@ func localHost(t *testing.T) {
 	}
 }
 
-// startedAs runs a sleeping process whose command name holds ") " and a "(", the bytes that shift naive stat parsing.
-func startedAs(t *testing.T) (pid int, done <-chan error) {
+// startedAs runs a sleeping process under the given file name; name holds the awkward bytes a test asks for, such as
+// ") " and "(", which shift naive stat parsing, or a newline. The sleeper is a copy of this test binary, which sleeps
+// under any name it is copied to: /bin/sleep on Ubuntu 26.04 is one multicall coreutils that exits on a name it does
+// not know.
+func startedAs(t *testing.T, name string) (pid int, done <-chan error) {
 	t.Helper()
-	exe := filepath.Join(t.TempDir(), "x) y (z")
-	b, err := os.ReadFile("/bin/sleep")
+	exe := filepath.Join(t.TempDir(), name)
+	self, err := os.Executable()
 	if err != nil {
-		t.Skip("no /bin/sleep")
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(self) //nolint:gosec // G304: self is this test binary, from os.Executable
+	if err != nil {
+		t.Fatal(err)
 	}
 	if err := os.WriteFile(exe, b, 0o700); err != nil { //nolint:gosec // G306: an executable copy in the test's own folder
 		t.Fatal(err)
 	}
-	cmd := exec.CommandContext(t.Context(), exe, "300") //nolint:gosec // G204: a copy of sleep made by the test
+	cmd := exec.CommandContext(t.Context(), exe, "-test.run=^$") //nolint:gosec // G204: a copy of this test binary made by the test
+	cmd.Env = append(os.Environ(), helperEnv+"=sleep")
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -113,36 +121,45 @@ func startedAs(t *testing.T) (pid int, done <-chan error) {
 	return cmd.Process.Pid, reap(cmd)
 }
 
-// The host listing and the host identity check read the same start as startTime does, comm with ") " included.
+// The host listing and the host identity check read the same start as startTime does, comm with ") " included, and
+// one holding a newline, which makes stat span lines where a first-line read would stop early.
 func TestHostStartMatchesStartTimeForAnAwkwardCommandName(t *testing.T) {
-	pid, _ := startedAs(t)
-	want := startTime("/proc", strconv.Itoa(pid))
-	if want.IsZero() {
-		t.Fatal("no start time")
-	}
-	out, err := exec.CommandContext(t.Context(), "sh", "-c", hostScript).Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	listing, _, _ := strings.Cut(string(out), "\x00")
-	if !strings.Contains("\n"+listing, "\n"+strconv.Itoa(pid)+" "+strconv.FormatInt(want.Unix(), 10)+"\n") {
-		t.Fatalf("host listing has no %d %d line", pid, want.Unix())
+	for _, name := range []string{"x) y (z", "x\n) y (z"} {
+		t.Run(strings.ReplaceAll(name, "\n", `\n`), func(t *testing.T) {
+			pid, _ := startedAs(t, name)
+			want := startTime("/proc", strconv.Itoa(pid))
+			if want.IsZero() {
+				t.Fatal("no start time")
+			}
+			out, err := exec.CommandContext(t.Context(), "sh", "-c", hostScript).Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			listing, _, _ := strings.Cut(string(out), "\x00")
+			if !strings.Contains("\n"+listing, "\n"+strconv.Itoa(pid)+" "+strconv.FormatInt(want.Unix(), 10)+"\n") {
+				t.Fatalf("host listing has no %d %d line", pid, want.Unix())
+			}
+		})
 	}
 }
 
 func TestFlatpakStopChecksTheHostStartTimeInTheSameCommand(t *testing.T) {
-	pid, done := startedAs(t)
-	start := startTime("/proc", strconv.Itoa(pid))
-	localHost(t)
-	recycled := Process{PID: pid, Start: start.Add(-time.Hour)}
-	if err := Stop(t.Context(), recycled, 500*time.Millisecond); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"x) y (z", "x\n) y (z"} {
+		t.Run(strings.ReplaceAll(name, "\n", `\n`), func(t *testing.T) {
+			pid, done := startedAs(t, name)
+			start := startTime("/proc", strconv.Itoa(pid))
+			localHost(t)
+			recycled := Process{PID: pid, Start: start.Add(-time.Hour)}
+			if err := Stop(t.Context(), recycled, 500*time.Millisecond); err != nil {
+				t.Fatal(err)
+			}
+			if !Alive(pid) {
+				t.Fatal("a process started at another time was signalled")
+			}
+			if err := Stop(t.Context(), Process{PID: pid, Start: start}, 10*time.Second); err != nil {
+				t.Fatal(err)
+			}
+			await(t, done)
+		})
 	}
-	if !Alive(pid) {
-		t.Fatal("a process started at another time was signalled")
-	}
-	if err := Stop(t.Context(), Process{PID: pid, Start: start}, 10*time.Second); err != nil {
-		t.Fatal(err)
-	}
-	await(t, done)
 }
