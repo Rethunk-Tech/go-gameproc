@@ -23,7 +23,7 @@ import (
 // its Wine pid, which the launcher then waits on for good. Whatever is still running after grace is terminated. The
 // polite close is skipped inside a Flatpak, where the process's environment is not readable.
 func Stop(ctx context.Context, p Process, grace time.Duration) error {
-	if p.PID <= 0 {
+	if !validPID(p.PID) {
 		return errPID(p.PID)
 	}
 	if !flatpak.Inside() && !sameProcess(p) {
@@ -120,7 +120,7 @@ func wineLoader(exe string) string {
 // SIGKILL after grace then reaches the process SIGTERM did, never a later holder of the number). A caller holding a
 // listed Process uses Stop, which also refuses a pid that has been recycled since the listing.
 func Terminate(pid int, grace time.Duration) error {
-	if pid <= 0 {
+	if !validPID(pid) {
 		return errPID(pid)
 	}
 	return terminate(Process{PID: pid}, grace)
@@ -163,7 +163,7 @@ func terminate(p Process, grace time.Duration) error {
 // Alive reports whether a process with this pid exists; a pid of 0 or less never does. In a Flatpak a failure to ask
 // the host reads as false; callers that must tell the two apart (Stop, WaitPID) use hostProbe.
 func Alive(pid int) bool {
-	if pid <= 0 {
+	if !validPID(pid) {
 		return false
 	}
 	if flatpak.Inside() {

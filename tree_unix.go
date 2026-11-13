@@ -20,7 +20,7 @@ func PrepareTree(cmd *exec.Cmd, _ bool) {
 // started, so KillTree can refuse a pid that was recycled, and refuses a pid no process has, so the same call is
 // safe on every OS.
 func TrackTree(pid int) error {
-	if pid <= 0 {
+	if !validPID(pid) {
 		return errPID(pid)
 	}
 	rememberLeader(pid)
@@ -31,7 +31,7 @@ func TrackTree(pid int) error {
 // kill(-1, ...) signals every process the user owns. For a pid TrackTree saw, it also refuses when a different
 // process now holds that pid, which is what a reaped leader's number becomes.
 func KillTree(pid int) {
-	if pid <= 1 || leaderReplaced(pid) {
+	if pid <= 1 || !validPID(pid) || leaderReplaced(pid) {
 		return
 	}
 	_ = syscall.Kill(-pid, syscall.SIGTERM)

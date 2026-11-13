@@ -3,6 +3,7 @@
 package gameproc
 
 import (
+	"math"
 	"strconv"
 	"sync"
 	"time"
@@ -65,3 +66,7 @@ func leaderReplaced(pid int) bool {
 	now := startTime("/proc", strconv.Itoa(pid))
 	return !now.IsZero() && now.Sub(want).Abs() > startSlack
 }
+
+// validPID reports whether pid fits the kernel's pid_t. A larger number would be cut to its low 32 bits by the
+// syscall, so 1<<32 would signal the caller's own process group as pid 0.
+func validPID(pid int) bool { return pid > 0 && int64(pid) <= math.MaxInt32 }
