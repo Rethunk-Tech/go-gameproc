@@ -21,7 +21,7 @@ func runs(args []string, name string) bool {
 		// case. A Linux name is matched exactly: ignoring case there would make /bin/sh a program called "SH".
 		base := filepath.Base(strings.ReplaceAll(a, `\`, "/"))
 		if ext := strings.ToLower(filepath.Ext(base)); ext == ".exe" || ext == ".dll" {
-			return strings.EqualFold(strings.TrimSuffix(base, filepath.Ext(base)), name)
+			return strings.EqualFold(strings.TrimSuffix(base, filepath.Ext(base)), trimExe(name))
 		}
 		return base == name
 	}

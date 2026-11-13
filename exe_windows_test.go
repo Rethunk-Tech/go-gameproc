@@ -24,4 +24,8 @@ func TestProcessesFindsAnUpperCaseExe(t *testing.T) {
 	if err != nil || !slices.ContainsFunc(procs, func(p Process) bool { return p.PID == cmd.Process.Pid }) {
 		t.Fatalf("%+v, %v", procs, err)
 	}
+	procs, err = Processes("", "HELPER.EXE")
+	if err != nil || !slices.ContainsFunc(procs, func(p Process) bool { return p.PID == cmd.Process.Pid }) {
+		t.Fatalf("HELPER.EXE: %+v, %v", procs, err)
+	}
 }

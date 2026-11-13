@@ -240,6 +240,9 @@ func TestSteamAndItsWrappersAreNeverTheGame(t *testing.T) {
 	if !runs([]string{`Z:\games\My Game\My Game.exe`}, game) {
 		t.Error("the game's own process does not count as the game")
 	}
+	if !runs([]string{`Z:\g\My Game.exe`}, "My Game.exe") {
+		t.Error("a name that includes .exe does not match the process")
+	}
 }
 
 // A game's process may be named "SH": the system's shell, named or resolved from a system folder, is never the game.

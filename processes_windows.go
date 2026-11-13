@@ -25,7 +25,7 @@ func Processes(_ string, names ...string) ([]Process, error) {
 	var out []Process
 	for err = windows.Process32First(snap, &entry); err == nil; err = windows.Process32Next(snap, &entry) {
 		exe := trimExe(windows.UTF16ToString(entry.ExeFile[:]))
-		if slices.ContainsFunc(names, func(name string) bool { return strings.EqualFold(exe, name) }) {
+		if slices.ContainsFunc(names, func(name string) bool { return strings.EqualFold(exe, trimExe(name)) }) {
 			if path, start := imagePath(entry.ProcessID); !systemProgram(path) {
 				out = append(out, Process{PID: int(entry.ProcessID), Exe: path, Start: start})
 			}
@@ -38,7 +38,7 @@ func Processes(_ string, names ...string) ([]Process, error) {
 // any of them.
 func (p Process) Named(names ...string) bool {
 	exe := trimExe(filepath.Base(p.Exe))
-	return p.Exe == "" || slices.ContainsFunc(names, func(name string) bool { return strings.EqualFold(exe, name) })
+	return p.Exe == "" || slices.ContainsFunc(names, func(name string) bool { return strings.EqualFold(exe, trimExe(name)) })
 }
 
 // imagePath is the executable path and creation time of pid, or empty when the process cannot be opened.

@@ -60,7 +60,7 @@ func (p Process) ExeIs(names ...string) bool {
 	}
 	base := trimExe(strings.TrimSuffix(filepath.Base(p.Exe), " (deleted)"))
 	for _, name := range names {
-		if strings.EqualFold(base, name) {
+		if strings.EqualFold(base, trimExe(name)) {
 			return true
 		}
 	}

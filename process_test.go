@@ -40,4 +40,7 @@ func TestExeIsIgnoresTheCaseOfExe(t *testing.T) {
 	if !(Process{Exe: "/g/GAME.EXE"}).ExeIs("GAME") {
 		t.Fatal("GAME.EXE was not GAME")
 	}
+	if !(Process{Exe: "/g/GAME.EXE"}).ExeIs("GAME.EXE") {
+		t.Fatal("GAME.EXE was not GAME.EXE")
+	}
 }
