@@ -136,7 +136,8 @@ func TestHostStartMatchesStartTimeForAnAwkwardCommandName(t *testing.T) {
 				t.Fatal(err)
 			}
 			listing, _, _ := strings.Cut(string(out), "\x00")
-			if !strings.Contains("\n"+listing, "\n"+strconv.Itoa(pid)+" "+strconv.FormatInt(want.Unix(), 10)+"\n") {
+			mark := "\n" + strconv.Itoa(pid) + " " + strconv.FormatInt(want.Unix(), 10)
+			if !strings.Contains("\n"+listing, mark+"\n") && !strings.Contains("\n"+listing, mark+" ") {
 				t.Fatalf("host listing has no %d %d line", pid, want.Unix())
 			}
 		})
