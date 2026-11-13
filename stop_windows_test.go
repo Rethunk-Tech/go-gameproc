@@ -52,3 +52,11 @@ func TestStopLeavesAProcessThatIsNotTheListedOne(t *testing.T) {
 		t.Fatal("Stop killed a process that was not the listed one")
 	}
 }
+
+func TestTerminateWithZeroGraceDoesNotReportStillExiting(t *testing.T) {
+	cmd := helperCmd(t, "sleep")
+	startHelper(t, cmd)
+	if err := Terminate(cmd.Process.Pid, 0); err != nil {
+		t.Fatalf("Terminate with no grace: %v", err)
+	}
+}

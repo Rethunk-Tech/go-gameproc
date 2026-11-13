@@ -77,6 +77,9 @@ func Terminate(pid int, grace time.Duration) error {
 			return alreadyExiting(pid, err, grace)
 		}
 	}
+	if grace <= 0 {
+		return nil // The kill was issued; a zero grace asks for no wait.
+	}
 	ev, err := windows.WaitForSingleObject(h, waitMillis(grace))
 	if err != nil {
 		return err
