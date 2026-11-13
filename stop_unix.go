@@ -209,6 +209,19 @@ func hostKill(sig string, pid int, start time.Time) error {
 	return err
 }
 
+// hostStart is when the host process pid began, from startof, so WaitPID can bind the pid it first saw.
+func hostStart(pid int) (time.Time, error) {
+	out, err := hostOutput("sh", "-c", hostStartOf+`startof "$1" && echo "$S"`, "sh", strconv.Itoa(pid))
+	if err != nil {
+		return time.Time{}, err
+	}
+	sec, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(sec, 0), nil
+}
+
 // hostProbe reports whether the host process pid exists (and, when start is known, was created at start). kill's
 // "no such process" is told from a failure to run flatpak-spawn at all by asking the host's sh to answer in its own
 // stdout: any error here is the latter.

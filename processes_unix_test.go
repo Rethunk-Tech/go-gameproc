@@ -130,6 +130,34 @@ func TestHostTerminateSignalsThroughHostKill(t *testing.T) {
 	}
 }
 
+func TestWaitPIDStopsWaitingWhenTheHostPidIsReused(t *testing.T) {
+	t.Setenv("FLATPAK_ID", "x")
+	old := hostOutput
+	t.Cleanup(func() { hostOutput = old })
+	hostOutput = func(_ string, args ...string) ([]byte, error) {
+		if len(args) >= 5 && args[4] != "" {
+			return []byte("gone\n"), nil
+		}
+		if len(args) >= 2 && strings.Contains(args[1], `echo "$S"`) {
+			return []byte("100\n"), nil
+		}
+		return []byte("alive\n"), nil
+	}
+	done := make(chan error, 1)
+	go func() {
+		_, err := WaitPID(42)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("WaitPID hung on a recycled host pid")
+	}
+}
+
 func TestHostTerminateReportsAFailureToRunFlatpakSpawn(t *testing.T) {
 	t.Setenv("FLATPAK_ID", "x")
 	old := hostOutput
