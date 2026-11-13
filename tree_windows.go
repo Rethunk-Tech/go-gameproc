@@ -76,8 +76,12 @@ func trackHandle(pid int, h windows.Handle) error {
 		return err
 	}
 	jobsMu.Lock()
+	old, replaced := jobs[pid]
 	jobs[pid] = job
 	jobsMu.Unlock()
+	if replaced {
+		_ = windows.CloseHandle(old)
+	}
 	return nil
 }
 
