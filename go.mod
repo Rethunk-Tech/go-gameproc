@@ -12,7 +12,7 @@ tool (
 
 require (
 	github.com/Rethunk-Tech/go-desktopenv v0.9.1
-	github.com/Rethunk-Tech/go-safefs v0.9.0
+	github.com/Rethunk-Tech/go-safefs v0.9.1
 	golang.org/x/sys v0.50.0
 )
 
