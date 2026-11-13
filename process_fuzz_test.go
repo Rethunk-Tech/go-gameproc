@@ -36,7 +36,7 @@ func FuzzExeIs(f *testing.F) {
 	f.Fuzz(func(t *testing.T, exe, name string) {
 		got := (Process{Exe: exe}).ExeIs(name)
 		base := trimExe(strings.TrimSuffix(filepath.Base(exe), " (deleted)"))
-		want := exe != "" && strings.EqualFold(base, name)
+		want := exe != "" && strings.EqualFold(base, trimExe(name))
 		if got != want {
 			t.Fatalf("ExeIs(%q, %q) = %v, want %v", exe, name, got, want)
 		}
