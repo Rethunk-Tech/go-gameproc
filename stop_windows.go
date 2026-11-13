@@ -34,7 +34,31 @@ func waitMillis(d time.Duration) uint32 {
 }
 
 // Stop is Terminate: Windows has no polite close for a process the caller does not own the windows of.
-func Stop(_ context.Context, p Process, grace time.Duration) error { return Terminate(p.PID, grace) }
+func Stop(_ context.Context, p Process, grace time.Duration) error {
+	if !sameProcess(p) {
+		return nil // The listed process is gone and its pid belongs to another.
+	}
+	return Terminate(p.PID, grace)
+}
+
+// sameProcess reports whether the process now holding p.PID is the one p was listed as. A Process with no Start
+// cannot be told apart, so it is taken as the same.
+func sameProcess(p Process) bool {
+	if p.Start.IsZero() {
+		return true
+	}
+	id, err := pidUint32(p.PID)
+	if err != nil {
+		return false
+	}
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, id)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = windows.CloseHandle(h) }()
+	now := processStart(h)
+	return !now.IsZero() && now.Sub(p.Start).Abs() <= 2*time.Second
+}
 
 // Terminate ends the process, or its whole tracked tree, at once, since Windows has no polite signal for a GUI
 // program, and waits up to grace for it to be gone: TerminateProcess returns before the program's files are released.

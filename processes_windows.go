@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -25,8 +26,8 @@ func Processes(_ string, names ...string) ([]Process, error) {
 	for err = windows.Process32First(snap, &entry); err == nil; err = windows.Process32Next(snap, &entry) {
 		exe := trimExe(windows.UTF16ToString(entry.ExeFile[:]))
 		if slices.ContainsFunc(names, func(name string) bool { return strings.EqualFold(exe, name) }) {
-			if path := imagePath(entry.ProcessID); !systemProgram(path) {
-				out = append(out, Process{PID: int(entry.ProcessID), Exe: path})
+			if path, start := imagePath(entry.ProcessID); !systemProgram(path) {
+				out = append(out, Process{PID: int(entry.ProcessID), Exe: path, Start: start})
 			}
 		}
 	}
@@ -40,10 +41,28 @@ func (p Process) Named(names ...string) bool {
 	return p.Exe == "" || slices.ContainsFunc(names, func(name string) bool { return strings.EqualFold(exe, name) })
 }
 
-// imagePath is the executable path of pid, or "" when the process cannot be opened.
-func imagePath(pid uint32) string {
-	path, _ := ImagePath(int(pid))
-	return path
+// imagePath is the executable path and creation time of pid, or empty when the process cannot be opened.
+func imagePath(pid uint32) (string, time.Time) {
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+	if err != nil {
+		return "", time.Time{}
+	}
+	defer func() { _ = windows.CloseHandle(h) }()
+	var buf [windows.MAX_LONG_PATH]uint16
+	n := uint32(windows.MAX_LONG_PATH)
+	path := ""
+	if err := windows.QueryFullProcessImageName(h, 0, &buf[0], &n); err == nil {
+		path = windows.UTF16ToString(buf[:n])
+	}
+	return path, processStart(h)
+}
+
+func processStart(h windows.Handle) time.Time {
+	var creation, exit, kernel, user windows.Filetime
+	if err := windows.GetProcessTimes(h, &creation, &exit, &kernel, &user); err != nil {
+		return time.Time{}
+	}
+	return time.Unix(0, creation.Nanoseconds())
 }
 
 // ImagePath is the executable path of pid (QueryFullProcessImageName).
