@@ -108,7 +108,8 @@ func Alive(pid int) bool {
 	}
 	h, err := windows.OpenProcess(windows.SYNCHRONIZE, false, id)
 	if err != nil {
-		return false
+		// An elevated or protected process refuses the handle yet runs; only "no such pid" means gone.
+		return errors.Is(err, windows.ERROR_ACCESS_DENIED)
 	}
 	defer func() { _ = windows.CloseHandle(h) }()
 	// The handle is signalled once the process ends; a program may itself exit with code 259, which
