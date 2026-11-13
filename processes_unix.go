@@ -139,7 +139,7 @@ func startTime(procDir, pid string) time.Time {
 // from the stat start tick, as hostStartOf computes it, which the proc entry's mtime is not: the kernel may recreate
 // that inode while the process runs), a NUL, then grep's "pid/cmdline:arg" record per argument, NUL-terminated so an
 // argument may hold any other byte.
-const hostScript = hostStartOf + `cd /proc && for p in [0-9]*; do startof "$p" && echo "$p $S"; done; printf '\0'; grep -Hasz '' [0-9]*/cmdline 2>/dev/null; exit 0`
+const hostScript = hostStartOf + `cd /proc && for p in [0-9]*; do startof "$p" && echo "$p $S $(readlink "$p/exe" 2>/dev/null)"; done; printf '\0'; grep -Hasz '' [0-9]*/cmdline 2>/dev/null; exit 0`
 
 func hostProcesses(names []string) ([]Process, error) {
 	out, err := hostOutput("sh", "-c", hostScript)
@@ -152,21 +152,31 @@ func hostProcesses(names []string) ([]Process, error) {
 func parseHostProcesses(out string, names ...string) []Process {
 	starts, cmdlines, _ := strings.Cut(out, "\x00")
 	start := map[int]time.Time{}
+	exe := map[int]string{}
 	for line := range strings.SplitSeq(starts, "\n") {
-		pid, sec, _ := strings.Cut(line, " ")
+		pid, rest, _ := strings.Cut(line, " ")
+		sec, path, _ := strings.Cut(rest, " ")
 		p, perr := strconv.Atoi(pid)
 		s, serr := strconv.ParseInt(sec, 10, 64)
 		if perr == nil && serr == nil {
 			start[p] = time.Unix(s, 0)
+			if path != "" {
+				exe[p] = path
+			}
 		}
 	}
 	var procs []Process
 	cur := Process{PID: -1}
 	flush := func() {
-		if cur.PID >= 0 && runsAny(cur.Args, names) {
-			cur.Start = start[cur.PID]
-			procs = append(procs, cur)
+		if cur.PID < 0 || !runsAny(cur.Args, names) {
+			return
 		}
+		cur.Exe = exe[cur.PID]
+		cur.Start = start[cur.PID]
+		if len(cur.Args) > 0 && !strings.ContainsAny(cur.Args[0], `/\`) && systemProgram(cur.Exe) && !hosted(cur.Args) {
+			return
+		}
+		procs = append(procs, cur)
 	}
 	for rec := range strings.SplitSeq(cmdlines, "\x00") {
 		file, arg, ok := strings.Cut(rec, ":")

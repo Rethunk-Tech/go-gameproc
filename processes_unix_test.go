@@ -79,24 +79,16 @@ func TestHostScriptListsRealProcesses(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("reads /proc")
 	}
-	// Matched by its arguments: the test may run in a PID namespace whose pids /proc does not show.
-	// read is a builtin, so the shell waits on its stdin with no child to leave behind.
-	cmd := exec.CommandContext(t.Context(), "sh", "-c", "read -r _", "--mods-path", "/m\nx:y", "")
-	if _, err := cmd.StdinPipe(); err != nil {
-		t.Fatal(err)
-	}
-	if err := cmd.Start(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
+	cmd := helperCmd(t, "sleep")
+	startHelper(t, cmd)
 	out, err := exec.CommandContext(t.Context(), "sh", "-c", hostScript).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := parseHostProcesses(string(out), "sh")
-	i := slices.IndexFunc(got, func(p Process) bool { return slices.Equal(p.Args, cmd.Args) })
-	if i < 0 || got[i].PID <= 0 || time.Since(got[i].Start) > time.Minute {
-		t.Fatalf("not listed with args %q: %+v", cmd.Args, got)
+	got := parseHostProcesses(string(out), filepath.Base(os.Args[0]))
+	i := slices.IndexFunc(got, func(p Process) bool { return p.PID == cmd.Process.Pid })
+	if i < 0 || time.Since(got[i].Start) > time.Minute {
+		t.Fatalf("not listed: %+v", got)
 	}
 }
 
@@ -318,6 +310,14 @@ func TestHostTerminateReportsAProbeThatFailsAfterTERM(t *testing.T) {
 	}
 	if err := Terminate(42, time.Second); err == nil {
 		t.Fatal("a game that may still run was reported stopped")
+	}
+}
+
+func TestParseHostProcessesSkipsAPathlessSystemProgram(t *testing.T) {
+	t.Parallel()
+	got := parseHostProcesses("7 100 /usr/bin/sh\n\x007/cmdline:sh\x007/cmdline:-c\x007/cmdline:x\x00", "sh")
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want none", got)
 	}
 }
 
