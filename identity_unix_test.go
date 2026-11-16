@@ -3,11 +3,13 @@
 package gameproc
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -141,6 +143,23 @@ func TestHostStartMatchesStartTimeForAnAwkwardCommandName(t *testing.T) {
 				t.Fatalf("host listing has no %d %d line", pid, want.Unix())
 			}
 		})
+	}
+}
+
+// A host process the sandbox may not signal is alive: kill -0 fails with EPERM for it, so the probe reads /proc.
+func TestFlatpakProbeSeesAProcessItMayNotSignal(t *testing.T) {
+	if err := syscall.Kill(1, 0); !errors.Is(err, syscall.EPERM) {
+		t.Skipf("pid 1 is signalable here: %v", err)
+	}
+	localHost(t)
+	if alive, err := hostProbe(1, time.Time{}); err != nil || !alive {
+		t.Fatalf("hostProbe(1) = %v, %v; want it alive", alive, err)
+	}
+	if !Alive(1) {
+		t.Fatal("Alive(1) is false for a process that exists")
+	}
+	if err := Terminate(1, 0); err == nil {
+		t.Fatal("Terminate(1) reported success for a process it could not signal")
 	}
 }
 

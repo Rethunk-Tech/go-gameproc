@@ -222,11 +222,12 @@ func hostStart(pid int) (time.Time, error) {
 	return time.Unix(sec, 0), nil
 }
 
-// hostProbe reports whether the host process pid exists (and, when start is known, was created at start). kill's
-// "no such process" is told from a failure to run flatpak-spawn at all by asking the host's sh to answer in its own
-// stdout: any error here is the latter.
+// hostProbe reports whether the host process pid exists (and, when start is known, was created at start). Existence is
+// read from the host's /proc, not from kill -0: kill also fails with EPERM for a process the sandbox may not signal,
+// and that process is alive. The host's sh answers in its own stdout, so any error here is a failure to run
+// flatpak-spawn at all.
 func hostProbe(pid int, start time.Time) (bool, error) {
-	out, err := hostOutput("sh", "-c", hostIdentity+` && kill -0 "$1" 2>/dev/null && echo alive || echo gone`, "sh", strconv.Itoa(pid), startArg(start))
+	out, err := hostOutput("sh", "-c", hostIdentity+` && [ -d "/proc/$1" ] && echo alive || echo gone`, "sh", strconv.Itoa(pid), startArg(start))
 	if err != nil {
 		return false, err
 	}
