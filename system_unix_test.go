@@ -13,10 +13,10 @@ func TestProcessesSkipsUsrLib(t *testing.T) {
 	write := func(pid, cmdline string) {
 		t.Helper()
 		d := filepath.Join(proc, pid)
-		if err := os.Mkdir(d, 0o755); err != nil {
+		if err := os.Mkdir(d, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(d, "cmdline"), []byte(cmdline+"\x00"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(d, "cmdline"), []byte(cmdline+"\x00"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
