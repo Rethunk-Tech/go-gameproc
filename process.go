@@ -69,7 +69,7 @@ func (p Process) ExeIs(names ...string) bool {
 
 // trimExe drops a trailing ".exe" in any case, since Windows lists GAME.EXE as readily as game.exe.
 func trimExe(s string) string {
-	if len(s) > 4 && strings.EqualFold(s[len(s)-4:], ".exe") {
+	if len(s) > 4 && (strings.EqualFold(s[len(s)-4:], ".exe") || strings.EqualFold(s[len(s)-4:], ".dll")) {
 		return s[:len(s)-4]
 	}
 	return s

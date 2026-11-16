@@ -258,6 +258,9 @@ func TestASystemProgramIsNeverTheGame(t *testing.T) {
 	if !runs([]string{"/usr/bin/dotnet", "/home/u/Game/Loader.dll"}, "Loader") {
 		t.Error("a game run by the system's dotnet does not count")
 	}
+	if !runs([]string{"dotnet", "/g/Loader.dll"}, "Loader.dll") || !runs([]string{"dotnet", "/g/Loader.dll"}, "Loader.DLL") {
+		t.Error("a name that includes .dll does not match the process")
+	}
 	for path, want := range map[string]bool{"/usr/bin/sh": true, "/lib64/ld-linux.so": true, "/usr/local/bin/game": false, "/home/u/.local/share/Steam/x": false, `C:\Windows\System32\cmd.exe`: true, `D:\Games\SH.exe`: false, "": false} {
 		if got := systemProgram(path); got != want {
 			t.Errorf("systemProgram(%q) = %v", path, got)
