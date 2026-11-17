@@ -61,3 +61,5 @@ compile, nothing runs them), or `TrackTree`'s `ErrNotTracked` and resume-failure
 | `tree_windows.go` | Suspended start, job registry, resume |
 | `console_windows.go` | `StartOwnConsole` and the environment block |
 | `console_other.go` | `StartOwnConsole` off Windows |
+| `identity_unix.go` | Start-time check that a pid is still the same process, group-leader tracking, pid range |
+| `pidfd_linux.go`, `pidfd_other.go` | pidfd terminate and wait on Linux; no-ops elsewhere |
