@@ -6,6 +6,15 @@ Notable changes to `go-gameproc`. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- A `.dll` name is treated as the program it names, and a name that includes `.exe` never matches.
+- Programs under `/usr/lib` and `/usr/lib64` are skipped.
+- A zero grace on stop no longer reports a successful kill as still exiting.
+- A pid wider than 31 bits no longer reaches kill as pid 0.
+- On Windows, tracking a reused pid releases the job it replaces, `Alive` reports a process it may not open as running, and `Stop` can kill a recycled pid.
+- On Flatpak, host processes are probed through `/proc` so `EPERM` reads as alive, `WaitPID` waits on a recycled host pid, host listing returns a pathless system program, and the host stat file is read whole so a newline in a command name cannot cut the listing.
+
 ## [0.1.2] - 2026-11-07
 
 ### Fixed
