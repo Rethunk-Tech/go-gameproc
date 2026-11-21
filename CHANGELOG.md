@@ -6,6 +6,8 @@ Notable changes to `go-gameproc`. The format follows
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-11-21
+
 ### Fixed
 
 - A `.dll` name is treated as the program it names, and a name that includes `.exe` never matches.
@@ -47,7 +49,8 @@ Notable changes to `go-gameproc`. The format follows
   ended together: a process group on Unix, a job object on Windows.
 - `StartOwnConsole` starts a Windows console program in a console that it reads and writes itself.
 
-[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/Rethunk-Tech/go-gameproc/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Rethunk-Tech/go-gameproc/releases/tag/v0.1.0
